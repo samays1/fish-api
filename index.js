@@ -31,6 +31,17 @@ app.get("/health", (req, res) => {
     res.json({ status: "OK" });
 });
 
+// Validate endpoint
+app.post("/v1/tools/validate", (req, res) => {
+    const ip = req.body.ip;
+    const isIPv4 =
+      /^[0-9.]+$/.test(ip) &&
+      ip.split(".").length === 4 &&
+      ip.split(".").every((segment) => parseInt(segment) >= 0 && parseInt(segment) <= 255);
+    const response = { status: isIPv4 };
+    res.json(response);
+  });
+
 // Run server
 const port = 3000;
 app.listen(port, () => {
