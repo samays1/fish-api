@@ -19,6 +19,17 @@ app.get("/", (req, res) => {
     res.json(response);
 });
 
+// Prometheus metrics endpoint
+app.get("/metrics", (req, res) => {
+    res.set("Content-Type", prometheus.register.contentType);
+    const metrics = prometheus.register.metrics();
+    res.json({ description: "OK", metrics: metrics });
+});
+  
+// Health endpoint
+app.get("/health", (req, res) => {
+    res.json({ status: "OK" });
+});
 
 // Run server
 const port = 3000;
