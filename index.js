@@ -12,6 +12,7 @@ const pool = mysql.createPool({
     host: "localhost",
     user: "root",
     password: "password",
+    database: "challengeDB"
 });
 
 // Root endpoint
@@ -50,20 +51,30 @@ app.get('/v1/tools/lookup', async (req, res) => {
         return res.status(400).json({ message: 'Domain parameter is required' });
     }
 
+    // Resolve IPv4 addresses
     try {
         const dns = require('dns').promises;
         const addresses = await dns.resolve4(domain);
-        const response = {
+        var response = {
             addresses: addresses.map((address) => ({ ip: address })),
             client_ip: req.ip,
             created_at: new Date(),
             domain: domain, 
         }
-        res.json(response);
     } catch (error) {
         console.error(error);
-        res.status(404).json({ message: 'Not found' });
+        return res.status(404).json({ message: 'Unable to resolve domain' });
     }
+
+    // Log successful queries in MySQL database
+    pool.getConnection((err, conn) => {
+        if (err) throw err;
+        conn.query(
+            `INSERT INTO queries (domain, client_ip, created_at) VALUES (?, ?, ?)`,
+            [domain, req.ip, new Date()],
+        );
+    });
+    res.json(response);
 })
 
 // Validate endpoint
