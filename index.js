@@ -7,6 +7,13 @@ const mysql = require("mysql2");
 const app = express();
 app.use(bodyParser.json());
 
+// Create a MySQL connection pool
+const pool = mysql.createPool({
+    host: "localhost",
+    user: "root",
+    password: "password",
+});
+
 // Root endpoint
 app.get("/", (req, res) => {
     const currentDate =  Math.floor(Date.now() / 1000)
@@ -35,6 +42,29 @@ app.get("/health", (req, res) => {
     }
     res.json(response);
 });
+
+// Lookup endpoint
+app.get('/v1/tools/lookup', async (req, res) => {
+    const domain = req.query.domain;
+    if (!domain) {
+        return res.status(400).json({ message: 'Domain parameter is required' });
+    }
+
+    try {
+        const dns = require('dns').promises;
+        const addresses = await dns.resolve4(domain);
+        const response = {
+            addresses: addresses.map((address) => ({ ip: address })),
+            client_ip: req.ip,
+            created_at: new Date(),
+            domain: domain, 
+        }
+        res.json(response);
+    } catch (error) {
+        console.error(error);
+        res.status(404).json({ message: 'Not found' });
+    }
+})
 
 // Validate endpoint
 app.post("/v1/tools/validate", (req, res) => {
