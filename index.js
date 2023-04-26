@@ -9,12 +9,12 @@ app.use(bodyParser.json());
 
 // Root endpoint
 app.get("/", (req, res) => {
-    const currentDate =  Math.floor(Date.now())
-    const isKubernetes = !!process.env.KUBERNETES_SERVICE_HOST
+    const currentDate =  Math.floor(Date.now() / 1000)
+    const isRunningInKubernetes = !!process.env.KUBERNETES_SERVICE_HOST
     const response = {
         version: "0.1.0",
         date: currentDate,
-        kubernetes: isKubernetes,
+        kubernetes: isRunningInKubernetes,
     };
     res.json(response);
 });
@@ -24,23 +24,27 @@ app.get("/metrics", (req, res) => {
     res.set("Content-Type", prometheus.register.contentType);
     const metrics = prometheus.register.metrics();
     res.json({ description: "OK", metrics: metrics });
+    // TODO: Implement
 });
   
 // Health endpoint
 app.get("/health", (req, res) => {
-    res.json({ status: "OK" });
+    const response = {
+        status: "OK",
+        uptime: process.uptime(),
+    }
+    res.json(response);
 });
 
 // Validate endpoint
 app.post("/v1/tools/validate", (req, res) => {
     const ip = req.body.ip;
-    const isIPv4 =
-      /^[0-9.]+$/.test(ip) &&
-      ip.split(".").length === 4 &&
-      ip.split(".").every((segment) => parseInt(segment) >= 0 && parseInt(segment) <= 255);
-    const response = { status: isIPv4 };
-    res.json(response);
-  });
+    const regex = /^(\d{1,3}\.){3}\d{1,3}$/;
+    if (!regex.test(ip)) {
+     return res.status(400).json({ message: 'Invalid IP address format' });
+    }
+    res.json({ status: true });
+});
 
 // Run server
 const port = 3000;
