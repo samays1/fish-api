@@ -9,10 +9,10 @@ app.use(bodyParser.json());
 
 // Create a MySQL connection pool
 const pool = mysql.createPool({
-    host: "localhost",
+    host: "sqldb",
     user: "root",
     password: "password",
-    database: "challengeDB"
+    database: "challengeDB",
 });
 
 // Create a counter metric to track the number of requests to our API
