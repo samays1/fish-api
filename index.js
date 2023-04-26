@@ -45,15 +45,15 @@ app.get("/health", (req, res) => {
 });
 
 // Lookup endpoint
-app.get('/v1/tools/lookup', async (req, res) => {
+app.get("/v1/tools/lookup", async (req, res) => {
     const domain = req.query.domain;
     if (!domain) {
-        return res.status(400).json({ message: 'Domain parameter is required' });
+        return res.status(400).json({ message: "Domain parameter is required" });
     }
 
     // Resolve IPv4 addresses
     try {
-        const dns = require('dns').promises;
+        const dns = require("dns").promises;
         const addresses = await dns.resolve4(domain);
         var response = {
             addresses: addresses.map((address) => ({ ip: address })),
@@ -63,17 +63,14 @@ app.get('/v1/tools/lookup', async (req, res) => {
         }
     } catch (error) {
         console.error(error);
-        return res.status(404).json({ message: 'Unable to resolve domain' });
+        return res.status(404).json({ message: "Unable to resolve domain" });
     }
 
     // Log successful queries in MySQL database
-    pool.getConnection((err, conn) => {
-        if (err) throw err;
-        conn.query(
-            `INSERT INTO queries (domain, client_ip, created_at) VALUES (?, ?, ?)`,
-            [domain, req.ip, new Date()],
-        );
-    });
+    pool.query(
+        "INSERT INTO queries (domain, client_ip, created_at) VALUES (?, ?, ?)",
+        [domain, req.ip, new Date()],
+    );
     res.json(response);
 })
 
@@ -82,13 +79,28 @@ app.post("/v1/tools/validate", (req, res) => {
     const ip = req.body.ip;
     const regex = /^(\d{1,3}\.){3}\d{1,3}$/;
     if (!regex.test(ip)) {
-     return res.status(400).json({ message: 'Invalid IP address format' });
+        return res.status(400).json({ message: "Invalid IP address format" });
     }
     res.json({ status: true });
+});
+
+// History endpoint
+app.get("/v1/history", (req, res) => {
+    pool.query(
+        "SELECT * FROM queries ORDER BY created_at DESC LIMIT 20",
+        (error, response) => {
+            if (error) {
+                console.error(`Error retrieving queries: ${error}`);
+                return res.status(400).json({ message: "Bad request" });
+            } else {
+                res.json(response);
+            }
+        }
+    );
 });
 
 // Run server
 const port = 3000;
 app.listen(port, () => {
-  console.log(`App is running on port: http://localhost:${port}`);
+    console.log("App is running on port: http://localhost:${port}");
 });
