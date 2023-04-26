@@ -15,6 +15,39 @@ const pool = mysql.createPool({
     database: "challengeDB"
 });
 
+// Create a counter metric to track the number of requests to our API
+const counter = new prometheus.Counter({
+    name: "api_queries_total",
+    help: "Total number of requests to the API",
+});
+  
+// Create a histogram metric to track the duration of requests to our API
+const histogram = new prometheus.Histogram({
+    name: "api_query_duration_seconds",
+    help: "Duration of requests to the API",
+    buckets: [0.1, 0.5, 1, 5, 10],
+});
+
+// Middleware to track query metrics
+app.use((req, res, next) => {
+    const start = Date.now();
+
+    res.on("finish", () => {
+      const duration = (Date.now() - start) / 1000;
+      counter.inc();
+      histogram.observe(duration);
+    });
+
+    next();
+});
+
+// Prometheus metrics endpoint
+app.get("/metrics", async (req, res) => {
+    res.set("Content-Type", prometheus.register.contentType);
+    const metrics = await prometheus.register.metrics();
+  res.end(metrics);
+});
+
 // Root endpoint
 app.get("/", (req, res) => {
     const currentDate =  Math.floor(Date.now() / 1000)
@@ -27,14 +60,6 @@ app.get("/", (req, res) => {
     res.json(response);
 });
 
-// Prometheus metrics endpoint
-app.get("/metrics", (req, res) => {
-    res.set("Content-Type", prometheus.register.contentType);
-    const metrics = prometheus.register.metrics();
-    res.json({ description: "OK", metrics: metrics });
-    // TODO: Implement
-});
-  
 // Health endpoint
 app.get("/health", (req, res) => {
     const response = {
